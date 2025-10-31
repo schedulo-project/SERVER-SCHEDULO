@@ -1,2 +1,2 @@
 # SERVER-SCHEDULO
-Ubuntu(Linux) Server
+Ubuntu(Linux) Server Repository of Schedulo
