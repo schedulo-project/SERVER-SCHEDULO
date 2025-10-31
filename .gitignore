@@ -1,0 +1,22 @@
+# .env
+.env
+
+# Firebase
+serviceAccountKey.json
+
+
+# ----------------------------------------------------------------
+# 2. SSL/TLS (Certbot)
+# ----------------------------------------------------------------
+
+# Let's Encrypt
+certbot/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# log
+*.log
+

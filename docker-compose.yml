@@ -1,0 +1,92 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: schedulo_db
+    restart: always
+    env_file:
+      - ./.env
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - schedulo-db-data:/var/lib/mysql
+
+  redis:
+    image: redis:7
+    container_name: schedulo_redis
+    restart: always
+
+  app:
+    image: ph1losophe/schedulo:latest
+    container_name: schedulo
+    restart: always
+    expose:
+      - "8000"
+    env_file:
+      - ./.env
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    volumes:
+      - ./serviceAccountKey.json:/app/serviceAccountKey.json:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: sh -c "python manage.py migrate --noinput && exec uwsgi --ini /app/uwsgi.ini"
+
+  celery-worker:
+    image: ph1losophe/schedulo:latest
+    container_name: schedulo_celery_worker
+    restart: always
+    env_file:
+      - ./.env
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    volumes:
+      - ./serviceAccountKey.json:/app/serviceAccountKey.json:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: celery -A config worker -l info
+
+  celery-beat:
+    image: ph1losophe/schedulo:latest
+    container_name: schedulo_celery_beat
+    restart: always
+    env_file:
+      - ./.env
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    volumes:
+      - ./serviceAccountKey.json:/app/serviceAccountKey.json:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: celery -A config beat -l info
+
+  nginx:
+    image: nginx:latest
+    container_name: schedulo_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - app
+
+volumes:
+  schedulo-db-data:
+
